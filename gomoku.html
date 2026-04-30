@@ -68,6 +68,15 @@
       <option value="6">大师</option>
     </select>
   </label>
+  <label style="display:flex;align-items:center;gap:6px;">
+    棋盘风格
+    <select id="boardStyle">
+      <option value="wood" selected>经典木质</option>
+      <option value="dark">现代深色</option>
+      <option value="paper">简约白纸</option>
+      <option value="green">翡翠绿</option>
+    </select>
+  </label>
   <button id="btnSwap">交换执子</button>
 </div>
 
@@ -93,6 +102,58 @@ const ctx = canvas.getContext('2d');
 const statusEl = document.getElementById('status');
 const thinkingEl = document.getElementById('thinking');
 const diffSelect = document.getElementById('difficulty');
+const styleSelect = document.getElementById('boardStyle');
+
+const BOARD_STYLES = {
+  wood: {
+    bg: '#e3c16f',
+    line: '#5c4033',
+    star: '#3e2723',
+    coord: '#5c4033',
+    texture: true,
+    pieceBlack: ['#666', '#222', '#000'],
+    pieceWhite: ['#fff', '#e0e0e0', '#bbb'],
+    strokeBlack: '#111',
+    strokeWhite: '#999',
+    lastMove: 'red'
+  },
+  dark: {
+    bg: '#2d3436',
+    line: '#636e72',
+    star: '#b2bec3',
+    coord: '#b2bec3',
+    texture: false,
+    pieceBlack: ['#555', '#333', '#1a1a1a'],
+    pieceWhite: ['#fff', '#f5f5f5', '#ddd'],
+    strokeBlack: '#888',
+    strokeWhite: '#bbb',
+    lastMove: '#ff7675'
+  },
+  paper: {
+    bg: '#fafafa',
+    line: '#bdbdbd',
+    star: '#757575',
+    coord: '#757575',
+    texture: false,
+    pieceBlack: ['#555', '#333', '#111'],
+    pieceWhite: ['#fff', '#f0f0f0', '#ccc'],
+    strokeBlack: '#000',
+    strokeWhite: '#aaa',
+    lastMove: '#e74c3c'
+  },
+  green: {
+    bg: '#4a7c59',
+    line: '#2d4a33',
+    star: '#1b2e20',
+    coord: '#2d4a33',
+    texture: false,
+    pieceBlack: ['#666', '#222', '#000'],
+    pieceWhite: ['#fff', '#e8e8e8', '#bbb'],
+    strokeBlack: '#111',
+    strokeWhite: '#999',
+    lastMove: '#ff6b6b'
+  }
+};
 
 /* ================= 初始化 ================= */
 function initBoard() {
@@ -108,23 +169,28 @@ function initBoard() {
 
 /* ================= 绘制 ================= */
 function draw() {
+  const styleKey = styleSelect.value;
+  const st = BOARD_STYLES[styleKey] || BOARD_STYLES.wood;
+
   // 背景
-  ctx.fillStyle = '#e3c16f';
+  ctx.fillStyle = st.bg;
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-  // 木纹质感（简单网格+小点）
-  ctx.save();
-  ctx.globalAlpha = 0.05;
-  ctx.fillStyle = '#000';
-  for (let i = 0; i < 200; i++) {
-    const x = Math.random() * CANVAS_SIZE;
-    const y = Math.random() * CANVAS_SIZE;
-    ctx.fillRect(x, y, 2, 1);
+  // 木纹质感（仅经典木质）
+  if (st.texture) {
+    ctx.save();
+    ctx.globalAlpha = 0.05;
+    ctx.fillStyle = '#000';
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random() * CANVAS_SIZE;
+      const y = Math.random() * CANVAS_SIZE;
+      ctx.fillRect(x, y, 2, 1);
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // 网格线
-  ctx.strokeStyle = '#5c4033';
+  ctx.strokeStyle = st.line;
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = 0; i < SIZE; i++) {
@@ -137,7 +203,7 @@ function draw() {
 
   // 星位
   const stars = [3, 7, 11];
-  ctx.fillStyle = '#3e2723';
+  ctx.fillStyle = st.star;
   for (let r of stars) {
     for (let c of stars) {
       ctx.beginPath();
@@ -147,7 +213,7 @@ function draw() {
   }
 
   // 坐标标注
-  ctx.fillStyle = '#5c4033';
+  ctx.fillStyle = st.coord;
   ctx.font = '12px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -170,29 +236,26 @@ function drawPiece(r, c, role, isLast) {
   const x = PADDING + c * CELL;
   const y = PADDING + r * CELL;
   const rOuter = PIECE_R;
+  const styleKey = styleSelect.value;
+  const st = BOARD_STYLES[styleKey] || BOARD_STYLES.wood;
 
   ctx.beginPath();
   ctx.arc(x, y, rOuter, 0, Math.PI * 2);
   const grad = ctx.createRadialGradient(x - rOuter * 0.3, y - rOuter * 0.3, rOuter * 0.1, x, y, rOuter);
-  if (role === 1) {
-    grad.addColorStop(0, '#666');
-    grad.addColorStop(0.3, '#222');
-    grad.addColorStop(1, '#000');
-  } else {
-    grad.addColorStop(0, '#fff');
-    grad.addColorStop(0.7, '#e0e0e0');
-    grad.addColorStop(1, '#bbb');
-  }
+  const colors = role === 1 ? st.pieceBlack : st.pieceWhite;
+  grad.addColorStop(0, colors[0]);
+  grad.addColorStop(0.3, colors[1]);
+  grad.addColorStop(1, colors[2]);
   ctx.fillStyle = grad;
   ctx.fill();
-  ctx.strokeStyle = role === 1 ? '#111' : '#999';
+  ctx.strokeStyle = role === 1 ? st.strokeBlack : st.strokeWhite;
   ctx.lineWidth = 1;
   ctx.stroke();
 
   if (isLast) {
     ctx.beginPath();
     ctx.arc(x, y, PIECE_R * 0.25, 0, Math.PI * 2);
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = st.lastMove;
     ctx.fill();
   }
 }
@@ -553,6 +616,13 @@ document.getElementById('btnSwap').addEventListener('click', () => {
   const colorName = playerRole === 1 ? '黑棋' : '白棋';
   document.getElementById('playerColor').textContent = colorName;
   initBoard();
+});
+
+styleSelect.addEventListener('change', () => {
+  const styleKey = styleSelect.value;
+  const st = BOARD_STYLES[styleKey] || BOARD_STYLES.wood;
+  document.getElementById('board-container').style.background = st.bg;
+  draw();
 });
 
 /* ================= 启动 ================= */
